@@ -207,6 +207,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 543771422}
+  - component: {fileID: 543771423}
   m_Layer: 0
   m_Name: Envirement
   m_TagString: Untagged
@@ -229,6 +230,35 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &543771423
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 543771421}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2de6b3e0a47e4f57b4bbc0d55c11b7f8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  levelMapConfig: {fileID: 11400000, guid: 5d78aa1786f17ed4895acef655a892b9, type: 2}
+  targetCamera: {fileID: 895385805}
+  cellSize: 1
+  leftPadding: 0.35
+  rightPadding: 0.35
+  topPadding: 0.35
+  bottomPadding: 0.35
+  generatedPixelsPerCell: 32
+  markerScale: 0.36
+  backgroundColor: {r: 0.11, g: 0.15, b: 0.22, a: 1}
+  frontColor: {r: 0.72, g: 0.76, b: 0.82, a: 1}
+  spawnColor: {r: 0.27, g: 0.69, b: 0.98, a: 1}
+  monsterColor: {r: 0.93, g: 0.32, b: 0.28, a: 1}
+  treasureColor: {r: 0.99, g: 0.78, b: 0.17, a: 1}
+  backgroundSortingOrder: 0
+  frontSortingOrder: 10
+  markerSortingOrder: 20
 --- !u!1 &895385803
 GameObject:
   m_ObjectHideFlags: 0

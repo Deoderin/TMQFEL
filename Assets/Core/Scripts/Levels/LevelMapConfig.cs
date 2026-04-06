@@ -8,10 +8,16 @@ namespace TMQFEL.Levels
         [SerializeField] private int width;
         [SerializeField] private int height;
         [SerializeField] private LevelCellType[] cells;
+        [SerializeField] private Sprite backgroundSprite;
+        [SerializeField] private Sprite frontSprite;
 
         public int Width => width;
 
         public int Height => height;
+
+        public Sprite BackgroundSprite => backgroundSprite;
+
+        public Sprite FrontSprite => frontSprite;
 
         public LevelCellType GetCell(int x, int y)
         {
