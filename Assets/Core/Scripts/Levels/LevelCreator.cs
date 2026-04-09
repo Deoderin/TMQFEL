@@ -1,3 +1,4 @@
+using TMQFEL.Core;
 using UnityEngine;
 
 namespace TMQFEL.Levels
@@ -31,6 +32,15 @@ namespace TMQFEL.Levels
 
         private Sprite _generatedFrontSprite;
         private Texture2D _generatedFrontTexture;
+
+        public LevelMapConfig LevelMapConfig => levelMapConfig;
+
+        public float CellSize => cellSize;
+
+        private void Awake()
+        {
+            SystemsService.Instance.Register(new LevelSystem(this));
+        }
 
         private void Start()
         {
@@ -178,6 +188,11 @@ namespace TMQFEL.Levels
             var heightOffset = (levelMapConfig.Height - 1) * cellSize * 0.5f;
 
             return new Vector3((x * cellSize) - widthOffset, (y * cellSize) - heightOffset, 0f);
+        }
+
+        public Vector3 GetCellWorldPosition(int x, int y)
+        {
+            return transform.TransformPoint(GetCellPosition(x, y));
         }
 
         private static bool IsFrontCell(LevelCellType cellType)
