@@ -78,7 +78,7 @@ namespace TMQFEL.Levels
 
                     if (IsSlopeCell(cellType))
                     {
-                        CreateCollider(collidersRoot, x, y, position, cellType);
+                        CreateSlopeCollider(collidersRoot, x, y, position, cellType);
                     }
                 }
             }
@@ -159,7 +159,7 @@ namespace TMQFEL.Levels
             return gameObject;
         }
 
-        private void CreateCollider(Transform parent, int x, int y, Vector3 position, LevelCellType cellType)
+        private void CreateSlopeCollider(Transform parent, int x, int y, Vector3 position, LevelCellType cellType)
         {
             var colliderObject = new GameObject($"Collider_{x}_{y}");
             colliderObject.transform.SetParent(parent, false);
@@ -170,38 +170,97 @@ namespace TMQFEL.Levels
 
         private void CreateWallColliders(Transform parent)
         {
+            var processed = new bool[levelMapConfig.Width, levelMapConfig.Height];
+
             for (var y = 0; y < levelMapConfig.Height; y++)
             {
-                var x = 0;
-                while (x < levelMapConfig.Width)
+                for (var x = 0; x < levelMapConfig.Width; x++)
                 {
-                    if (levelMapConfig.GetCell(x, y) != LevelCellType.Wall)
+                    if (!TryGetWallArea(processed, x, y, out var wallArea))
                     {
-                        x++;
                         continue;
                     }
 
-                    var startX = x;
-                    while (x + 1 < levelMapConfig.Width && levelMapConfig.GetCell(x + 1, y) == LevelCellType.Wall)
-                    {
-                        x++;
-                    }
-
-                    CreateWallCollider(parent, startX, x, y);
-                    x++;
+                    MarkWallAreaProcessed(processed, wallArea);
+                    CreateWallCollider(parent, wallArea);
                 }
             }
         }
 
-        private void CreateWallCollider(Transform parent, int startX, int endX, int y)
+        private bool TryGetWallArea(bool[,] processed, int startX, int startY, out WallArea wallArea)
         {
-            var colliderObject = new GameObject($"Collider_{startX}_{y}_{endX}");
-            colliderObject.transform.SetParent(parent, false);
+            wallArea = default;
 
-            var widthInCells = (endX - startX) + 1;
-            var centerX = startX + ((widthInCells - 1) * 0.5f);
-            colliderObject.transform.localPosition = GetCellPosition(centerX, y);
-            colliderObject.AddComponent<BoxCollider2D>().size = new Vector2(widthInCells * cellSize, cellSize);
+            if (processed[startX, startY] || levelMapConfig.GetCell(startX, startY) != LevelCellType.Wall)
+            {
+                return false;
+            }
+
+            var endX = GetWallAreaEndX(processed, startX, startY);
+            var endY = GetWallAreaEndY(processed, startX, startY, endX);
+            wallArea = new WallArea(startX, startY, endX, endY);
+            return true;
+        }
+
+        private int GetWallAreaEndX(bool[,] processed, int startX, int y)
+        {
+            var endX = startX;
+            while (endX + 1 < levelMapConfig.Width
+                && !processed[endX + 1, y]
+                && levelMapConfig.GetCell(endX + 1, y) == LevelCellType.Wall)
+            {
+                endX++;
+            }
+
+            return endX;
+        }
+
+        private int GetWallAreaEndY(bool[,] processed, int startX, int startY, int endX)
+        {
+            var endY = startY;
+            while (CanExpandWallAreaUp(processed, startX, endY + 1, endX))
+            {
+                endY++;
+            }
+
+            return endY;
+        }
+
+        private bool CanExpandWallAreaUp(bool[,] processed, int startX, int y, int endX)
+        {
+            if (y >= levelMapConfig.Height)
+            {
+                return false;
+            }
+
+            for (var x = startX; x <= endX; x++)
+            {
+                if (processed[x, y] || levelMapConfig.GetCell(x, y) != LevelCellType.Wall)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static void MarkWallAreaProcessed(bool[,] processed, WallArea wallArea)
+        {
+            for (var y = wallArea.StartY; y <= wallArea.EndY; y++)
+            {
+                for (var x = wallArea.StartX; x <= wallArea.EndX; x++)
+                {
+                    processed[x, y] = true;
+                }
+            }
+        }
+
+        private void CreateWallCollider(Transform parent, WallArea wallArea)
+        {
+            var colliderObject = new GameObject($"Collider_{wallArea.StartX}_{wallArea.StartY}_{wallArea.EndX}_{wallArea.EndY}");
+            colliderObject.transform.SetParent(parent, false);
+            colliderObject.transform.localPosition = GetCellPosition(wallArea.CenterX, wallArea.CenterY);
+            colliderObject.AddComponent<BoxCollider2D>().size = new Vector2(wallArea.WidthInCells * cellSize, wallArea.HeightInCells * cellSize);
         }
 
         private void ScaleToMap(Transform target, Sprite sprite)
@@ -229,13 +288,6 @@ namespace TMQFEL.Levels
         public Vector3 GetCellWorldPosition(int x, int y)
         {
             return transform.TransformPoint(GetCellPosition(x, y));
-        }
-
-        private static bool IsFrontCell(LevelCellType cellType)
-        {
-            return cellType == LevelCellType.Wall
-                || cellType == LevelCellType.Slope45UpRight
-                || cellType == LevelCellType.Slope45UpLeft;
         }
 
         private static bool IsSlopeCell(LevelCellType cellType)
@@ -281,16 +333,6 @@ namespace TMQFEL.Levels
         private float GetMapHeight()
         {
             return cellSize * levelMapConfig.Height;
-        }
-
-        private float GetCameraWidth()
-        {
-            return GetCameraHeight() * targetCamera.aspect;
-        }
-
-        private float GetCameraHeight()
-        {
-            return targetCamera.orthographicSize * 2f;
         }
 
         private void FitCameraToLevel()
@@ -473,6 +515,30 @@ namespace TMQFEL.Levels
                 sprite.name = "SquareCell";
                 return sprite;
             }
+        }
+
+        private readonly struct WallArea
+        {
+            public WallArea(int startX, int startY, int endX, int endY)
+            {
+                StartX = startX;
+                StartY = startY;
+                EndX = endX;
+                EndY = endY;
+            }
+
+            public int StartX { get; }
+            public int StartY { get; }
+            public int EndX { get; }
+            public int EndY { get; }
+
+            public int WidthInCells => (EndX - StartX) + 1;
+
+            public int HeightInCells => (EndY - StartY) + 1;
+
+            public float CenterX => StartX + ((WidthInCells - 1) * 0.5f);
+
+            public float CenterY => StartY + ((HeightInCells - 1) * 0.5f);
         }
     }
 }

@@ -9,21 +9,135 @@ namespace TMQFEL.Player
     [RequireComponent(typeof(BoxCollider2D))]
     public sealed class Player : MonoBehaviour
     {
+        private const int ContactBufferSize = 8;
+        private const int CastBufferSize = 4;
+        private const float GroundNormalThreshold = 0.45f;
+        private const float ObstacleNormalThreshold = 0.45f;
+        private const float UpwardGroundedVelocityThreshold = 0.01f;
+        private const float StationaryVelocityThreshold = 0.01f;
+
         [SerializeField] private Transform visualRoot;
         [SerializeField] private SpriteRenderer spriteRenderer;
         [SerializeField] private float sizeMultiplier = 0.5f;
         [SerializeField] private bool debugLogs = false;
         [SerializeField] private Rigidbody2D rigidbody;
         [SerializeField] private BoxCollider2D boxCollider;
-        
-        private readonly ContactPoint2D[] _groundContacts = new ContactPoint2D[8];
-        private readonly RaycastHit2D[] _obstacleHits = new RaycastHit2D[4];
+
+        private readonly ContactPoint2D[] _bodyContacts = new ContactPoint2D[ContactBufferSize];
+        private readonly ContactPoint2D[] _groundContacts = new ContactPoint2D[ContactBufferSize];
+        private readonly RaycastHit2D[] _obstacleHits = new RaycastHit2D[CastBufferSize];
 
         private LevelSystem _levelSystem;
         private ContactFilter2D _contactFilter;
         private float _gravityScale = 4f;
 
         private void Awake()
+        {
+            ConfigurePhysics();
+        }
+
+        public void Spawn()
+        {
+            transform.position = GetLevelSystem().GetSpawnWorldPosition();
+            ResetMotion();
+            ApplyView();
+            LogDebug($"Spawn. {GetDebugState()}");
+        }
+
+        public void SetHorizontalSpeed(float speed)
+        {
+            SetVelocityX(speed);
+        }
+
+        public void Jump(float jumpSpeed)
+        {
+            LogDebug($"Jump speed={jumpSpeed:F2}. {GetDebugState()}");
+            SetVelocityY(jumpSpeed);
+        }
+
+        public void WallJump(float horizontalSpeed, float verticalSpeed)
+        {
+            LogDebug($"WallJump horizontal={horizontalSpeed:F2} vertical={verticalSpeed:F2}. {GetDebugState()}");
+            rigidbody.linearVelocity = new Vector2(horizontalSpeed, verticalSpeed);
+        }
+
+        public void ApplyWallSlide(float slideSpeed)
+        {
+            LogDebug($"WallSlide speed={slideSpeed:F2}. {GetDebugState()}");
+
+            var velocity = rigidbody.linearVelocity;
+            velocity.x = 0f;
+
+            if (velocity.y <= 0f)
+            {
+                velocity.y = -slideSpeed;
+            }
+
+            rigidbody.linearVelocity = velocity;
+        }
+
+        public void StartDash(Vector2 direction, float dashSpeed)
+        {
+            LogDebug($"Dash start direction=({direction.x:F2}, {direction.y:F2}) speed={dashSpeed:F2}. {GetDebugState()}");
+            rigidbody.gravityScale = 0f;
+            rigidbody.linearVelocity = direction.normalized * dashSpeed;
+        }
+
+        public void StopDash()
+        {
+            LogDebug($"Dash stop. {GetDebugState()}");
+            rigidbody.gravityScale = _gravityScale;
+        }
+
+        public bool HasObstacleInDirection(Vector2 direction, float distance)
+        {
+            if (direction == Vector2.zero)
+            {
+                return false;
+            }
+
+            var normalizedDirection = direction.normalized;
+            return HasBlockingContact(normalizedDirection) || HasBlockingCastHit(normalizedDirection, distance);
+        }
+
+        public bool IsGrounded()
+        {
+            if (rigidbody.linearVelocity.y > UpwardGroundedVelocityThreshold)
+            {
+                return false;
+            }
+
+            return HasGroundContact();
+        }
+
+        public string GetDebugState()
+        {
+            var position = transform.position;
+            var velocity = rigidbody.linearVelocity;
+            return $"position=({position.x:F3}, {position.y:F3}, {position.z:F3}) velocity=({velocity.x:F3}, {velocity.y:F3}) grounded={IsGrounded()}";
+        }
+
+        private void OnCollisionEnter2D(Collision2D collision)
+        {
+            LogCollision("Enter", collision);
+        }
+
+        private void OnCollisionExit2D(Collision2D collision)
+        {
+            LogCollision("Exit", collision);
+        }
+
+        private void OnCollisionStay2D(Collision2D collision)
+        {
+            if (!debugLogs || !IsStationary())
+            {
+                return;
+            }
+
+            LogCollision("Stay", collision);
+        }
+
+        private void ConfigurePhysics()
         {
             rigidbody.freezeRotation = true;
             rigidbody.gravityScale = _gravityScale;
@@ -37,97 +151,23 @@ namespace TMQFEL.Player
             };
         }
 
-        public void Spawn()
+        private void ResetMotion()
         {
-            transform.position = GetLevelSystem().GetSpawnWorldPosition();
             rigidbody.linearVelocity = Vector2.zero;
             rigidbody.angularVelocity = 0f;
             rigidbody.gravityScale = _gravityScale;
-            ApplyView();
         }
-
-        public void SetHorizontalSpeed(float speed)
-        {
-            var velocity = rigidbody.linearVelocity;
-            velocity.x = speed;
-            rigidbody.linearVelocity = velocity;
-        }
-
-        public void Jump(float jumpSpeed)
-        {
-            var velocity = rigidbody.linearVelocity;
-            velocity.y = jumpSpeed;
-            rigidbody.linearVelocity = velocity;
-        }
-
-        public void ApplyWallSlide(float slideSpeed)
-        {
-            var velocity = rigidbody.linearVelocity;
-            velocity.x = 0f;
-            if (velocity.y < -slideSpeed)
-            {
-                velocity.y = -slideSpeed;
-            }
-
-            rigidbody.linearVelocity = velocity;
-        }
-
-        public void StartDash(Vector2 direction, float dashSpeed)
-        {
-            rigidbody.gravityScale = 0f;
-            rigidbody.linearVelocity = direction.normalized * dashSpeed;
-        }
-
-        public void StopDash()
-        {
-            rigidbody.gravityScale = _gravityScale;
-        }
-
-        public bool HasObstacleInDirection(Vector2 direction, float distance)
-        {
-            if (direction == Vector2.zero)
-            {
-                return false;
-            }
-
-            var normalizedDirection = direction.normalized;
-            var hitCount = boxCollider.Cast(normalizedDirection, _contactFilter, _obstacleHits, distance);
-            for (var i = 0; i < hitCount; i++)
-            {
-                if (Vector2.Dot(_obstacleHits[i].normal, -normalizedDirection) > 0.45f)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        public bool IsGrounded()
-        {
-            if (rigidbody.linearVelocity.y > 0.01f)
-            {
-                return false;
-            }
-
-            var contactCount = rigidbody.GetContacts(_groundContacts);
-            for (var i = 0; i < contactCount; i++)
-            {
-                if (_groundContacts[i].normal.y > 0.45f)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
 
         private void ApplyView()
         {
-            var playerSize = GetLevelSystem().CellSize * sizeMultiplier;
+            var playerSize = GetPlayerSize();
             visualRoot.localScale = Vector3.one * playerSize;
             boxCollider.size = Vector2.one * playerSize;
+        }
+
+        private float GetPlayerSize()
+        {
+            return GetLevelSystem().CellSize * sizeMultiplier;
         }
 
         private LevelSystem GetLevelSystem()
@@ -135,6 +175,88 @@ namespace TMQFEL.Player
             return _levelSystem ??= SystemsService.Instance.Get<LevelSystem>();
         }
 
+        private void SetVelocityX(float x)
+        {
+            var velocity = rigidbody.linearVelocity;
+            velocity.x = x;
+            rigidbody.linearVelocity = velocity;
+        }
+
+        private void SetVelocityY(float y)
+        {
+            var velocity = rigidbody.linearVelocity;
+            velocity.y = y;
+            rigidbody.linearVelocity = velocity;
+        }
+
+        private bool HasBlockingContact(Vector2 normalizedDirection)
+        {
+            var contactCount = rigidbody.GetContacts(_bodyContacts);
+            for (var i = 0; i < contactCount; i++)
+            {
+                if (Vector2.Dot(_bodyContacts[i].normal, -normalizedDirection) > ObstacleNormalThreshold)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool HasBlockingCastHit(Vector2 normalizedDirection, float distance)
+        {
+            var hitCount = boxCollider.Cast(normalizedDirection, _contactFilter, _obstacleHits, distance);
+            for (var i = 0; i < hitCount; i++)
+            {
+                if (Vector2.Dot(_obstacleHits[i].normal, -normalizedDirection) > ObstacleNormalThreshold)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool HasGroundContact()
+        {
+            var contactCount = rigidbody.GetContacts(_groundContacts);
+            for (var i = 0; i < contactCount; i++)
+            {
+                if (_groundContacts[i].normal.y > GroundNormalThreshold)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool IsStationary()
+        {
+            var velocity = rigidbody.linearVelocity;
+            return Mathf.Abs(velocity.x) < StationaryVelocityThreshold
+                && Mathf.Abs(velocity.y) < StationaryVelocityThreshold;
+        }
+
+        private void LogDebug(string message)
+        {
+            if (!debugLogs)
+            {
+                return;
+            }
+
+            Debug.Log($"[Player] {message}", this);
+        }
+
+        private void LogCollision(string phase, Collision2D collision)
+        {
+            if (!debugLogs)
+            {
+                return;
+            }
+
+            Debug.Log($"[Player] Collision {phase} collider={collision.collider.name} contacts={FormatContacts(collision)} {GetDebugState()}", this);
+        }
 
         private static string FormatContacts(Collision2D collision)
         {
