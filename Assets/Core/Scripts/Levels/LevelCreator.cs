@@ -62,6 +62,7 @@ namespace TMQFEL.Levels
 
             CreateBackground(backgroundRoot);
             CreateFront(frontRoot);
+            CreateWallColliders(collidersRoot);
 
             for (var y = 0; y < levelMapConfig.Height; y++)
             {
@@ -75,7 +76,7 @@ namespace TMQFEL.Levels
                         CreateMarker(markersRoot, x, y, position, cellType);
                     }
 
-                    if (IsFrontCell(cellType))
+                    if (IsSlopeCell(cellType))
                     {
                         CreateCollider(collidersRoot, x, y, position, cellType);
                     }
@@ -164,13 +165,43 @@ namespace TMQFEL.Levels
             colliderObject.transform.SetParent(parent, false);
             colliderObject.transform.localPosition = position;
 
-            if (cellType == LevelCellType.Wall)
-            {
-                colliderObject.AddComponent<BoxCollider2D>().size = Vector2.one * cellSize;
-                return;
-            }
-
             colliderObject.AddComponent<PolygonCollider2D>().points = GetScaledSlopePoints(cellType);
+        }
+
+        private void CreateWallColliders(Transform parent)
+        {
+            for (var y = 0; y < levelMapConfig.Height; y++)
+            {
+                var x = 0;
+                while (x < levelMapConfig.Width)
+                {
+                    if (levelMapConfig.GetCell(x, y) != LevelCellType.Wall)
+                    {
+                        x++;
+                        continue;
+                    }
+
+                    var startX = x;
+                    while (x + 1 < levelMapConfig.Width && levelMapConfig.GetCell(x + 1, y) == LevelCellType.Wall)
+                    {
+                        x++;
+                    }
+
+                    CreateWallCollider(parent, startX, x, y);
+                    x++;
+                }
+            }
+        }
+
+        private void CreateWallCollider(Transform parent, int startX, int endX, int y)
+        {
+            var colliderObject = new GameObject($"Collider_{startX}_{y}_{endX}");
+            colliderObject.transform.SetParent(parent, false);
+
+            var widthInCells = (endX - startX) + 1;
+            var centerX = startX + ((widthInCells - 1) * 0.5f);
+            colliderObject.transform.localPosition = GetCellPosition(centerX, y);
+            colliderObject.AddComponent<BoxCollider2D>().size = new Vector2(widthInCells * cellSize, cellSize);
         }
 
         private void ScaleToMap(Transform target, Sprite sprite)
@@ -183,6 +214,11 @@ namespace TMQFEL.Levels
         }
 
         private Vector3 GetCellPosition(int x, int y)
+        {
+            return GetCellPosition((float)x, (float)y);
+        }
+
+        private Vector3 GetCellPosition(float x, float y)
         {
             var widthOffset = (levelMapConfig.Width - 1) * cellSize * 0.5f;
             var heightOffset = (levelMapConfig.Height - 1) * cellSize * 0.5f;
@@ -199,6 +235,12 @@ namespace TMQFEL.Levels
         {
             return cellType == LevelCellType.Wall
                 || cellType == LevelCellType.Slope45UpRight
+                || cellType == LevelCellType.Slope45UpLeft;
+        }
+
+        private static bool IsSlopeCell(LevelCellType cellType)
+        {
+            return cellType == LevelCellType.Slope45UpRight
                 || cellType == LevelCellType.Slope45UpLeft;
         }
 

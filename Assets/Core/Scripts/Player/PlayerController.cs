@@ -42,7 +42,7 @@ namespace TMQFEL.Player
         {
             var deltaTime = Time.fixedDeltaTime;
             _dashCooldownTimer = Mathf.Max(0f, _dashCooldownTimer - deltaTime);
-
+/*
             if (_isDashing)
             {
                 _dashTimer -= deltaTime;
@@ -68,6 +68,7 @@ namespace TMQFEL.Player
                 _dashQueued = false;
                 return;
             }
+*/
 
             var moveDirectionX = GetMoveDirectionX();
             if (player.HasObstacleInDirection(new Vector2(moveDirectionX, 0f), obstacleProbeDistance))
