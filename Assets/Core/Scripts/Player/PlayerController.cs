@@ -12,11 +12,16 @@ namespace TMQFEL.Player
         [SerializeField] private float dashDuration = 0.18f;
         [SerializeField] private float dashCooldown = 0.35f;
         [SerializeField] private float obstacleProbeDistance = 0.08f;
+        [SerializeField] private float wallSlideSpeed = 1.5f;
         [SerializeField] private Vector2 moveDirection = Vector2.right;
 
         private bool _jumpQueued;
         private bool _dashQueued;
         private bool _isDashing;
+        private bool _debugJumpTraceActive;
+        private bool _wasObstacleAhead;
+        private bool _wasWallSliding;
+        private int _debugJumpTraceFrame;
         private float _dashTimer;
         private float _dashCooldownTimer;
 
@@ -42,7 +47,7 @@ namespace TMQFEL.Player
         {
             var deltaTime = Time.fixedDeltaTime;
             _dashCooldownTimer = Mathf.Max(0f, _dashCooldownTimer - deltaTime);
-/*
+
             if (_isDashing)
             {
                 _dashTimer -= deltaTime;
@@ -68,21 +73,33 @@ namespace TMQFEL.Player
                 _dashQueued = false;
                 return;
             }
-*/
 
             var moveDirectionX = GetMoveDirectionX();
-            if (player.HasObstacleInDirection(new Vector2(moveDirectionX, 0f), obstacleProbeDistance))
+            var isGrounded = player.IsGrounded();
+            var direction = new Vector2(moveDirectionX, 0f);
+            var hasObstacleAhead = player.HasObstacleInDirection(direction, obstacleProbeDistance);
+
+            if (_jumpQueued && isGrounded)
             {
-                player.SetHorizontalSpeed(0f);
+                player.Jump(jumpSpeed);
+                _debugJumpTraceActive = true;
+                _debugJumpTraceFrame = 0;
+            }
+
+            if (hasObstacleAhead)
+            {
+                if (isGrounded)
+                {
+                    player.SetHorizontalSpeed(0f);
+                }
+                else
+                {
+                    player.ApplyWallSlide(wallSlideSpeed);
+                }
             }
             else
             {
                 player.SetHorizontalSpeed(moveDirectionX * moveSpeed);
-            }
-
-            if (_jumpQueued && player.IsGrounded())
-            {
-                player.Jump(jumpSpeed);
             }
 
             if (_dashQueued && _dashCooldownTimer <= 0f)
@@ -93,6 +110,7 @@ namespace TMQFEL.Player
                 player.StartDash(GetDashDirection(), dashSpeed);
             }
 
+            TraceJump(direction);
             _jumpQueued = false;
             _dashQueued = false;
         }
@@ -120,6 +138,23 @@ namespace TMQFEL.Player
         {
             return (Keyboard.current != null && Keyboard.current.leftShiftKey.wasPressedThisFrame)
                 || (Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame);
+        }
+
+        private void TraceJump(Vector2 direction)
+        {
+            if (!_debugJumpTraceActive)
+            {
+                return;
+            }
+
+            _debugJumpTraceFrame++;
+
+            var isGrounded = player.IsGrounded();
+
+            if (isGrounded && _debugJumpTraceFrame > 1)
+            {
+                _debugJumpTraceActive = false;
+            }
         }
     }
 }

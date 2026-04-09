@@ -142,6 +142,7 @@ MonoBehaviour:
   visualRoot: {fileID: 4447245609979847004}
   spriteRenderer: {fileID: 4870187954305841421}
   sizeMultiplier: 0.5
+  debugLogs: 0
   rigidbody: {fileID: 624803476062590622}
   boxCollider: {fileID: 8138971847248107077}
 --- !u!114 &252706893131195498
@@ -163,6 +164,8 @@ MonoBehaviour:
   dashDuration: 0.18
   dashCooldown: 0.35
   obstacleProbeDistance: 0.01
+  wallSlideSpeed: 3
+  debugLogs: 0
   moveDirection: {x: 1, y: 0}
 --- !u!50 &624803476062590622
 Rigidbody2D:
