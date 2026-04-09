@@ -15,12 +15,9 @@ namespace TMQFEL.Player
         [SerializeField] private float wallSlideSpeed = 1.5f;
         [SerializeField] private Vector2 moveDirection = Vector2.right;
 
-        private bool _jumpQueued;
-        private bool _dashQueued;
+        private bool _actionQueued;
         private bool _isDashing;
         private bool _debugJumpTraceActive;
-        private bool _wasObstacleAhead;
-        private bool _wasWallSliding;
         private int _debugJumpTraceFrame;
         private float _dashTimer;
         private float _dashCooldownTimer;
@@ -32,14 +29,9 @@ namespace TMQFEL.Player
 
         private void Update()
         {
-            if (WasJumpPressedThisFrame())
+            if (WasActionPressedThisFrame())
             {
-                _jumpQueued = true;
-            }
-
-            if (WasDashPressedThisFrame())
-            {
-                _dashQueued = true;
+                _actionQueued = true;
             }
         }
 
@@ -56,8 +48,7 @@ namespace TMQFEL.Player
                 {
                     _isDashing = false;
                     player.StopDash();
-                    _jumpQueued = false;
-                    _dashQueued = false;
+                    _actionQueued = false;
                     return;
                 }
 
@@ -69,8 +60,7 @@ namespace TMQFEL.Player
                     player.StopDash();
                 }
 
-                _jumpQueued = false;
-                _dashQueued = false;
+                _actionQueued = false;
                 return;
             }
 
@@ -79,7 +69,7 @@ namespace TMQFEL.Player
             var direction = new Vector2(moveDirectionX, 0f);
             var hasObstacleAhead = player.HasObstacleInDirection(direction, obstacleProbeDistance);
 
-            if (_jumpQueued && isGrounded)
+            if (_actionQueued && isGrounded)
             {
                 player.Jump(jumpSpeed);
                 _debugJumpTraceActive = true;
@@ -102,7 +92,7 @@ namespace TMQFEL.Player
                 player.SetHorizontalSpeed(moveDirectionX * moveSpeed);
             }
 
-            if (_dashQueued && _dashCooldownTimer <= 0f)
+            if (_actionQueued && !isGrounded && _dashCooldownTimer <= 0f)
             {
                 _isDashing = true;
                 _dashTimer = dashDuration;
@@ -111,8 +101,7 @@ namespace TMQFEL.Player
             }
 
             TraceJump(direction);
-            _jumpQueued = false;
-            _dashQueued = false;
+            _actionQueued = false;
         }
 
         private float GetMoveDirectionX()
@@ -127,17 +116,11 @@ namespace TMQFEL.Player
             return direction == Vector2.zero ? Vector2.right : direction;
         }
 
-        private static bool WasJumpPressedThisFrame()
+        private static bool WasActionPressedThisFrame()
         {
             return (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
                 || (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
                 || (Touchscreen.current != null && Touchscreen.current.primaryTouch.press.wasPressedThisFrame);
-        }
-
-        private static bool WasDashPressedThisFrame()
-        {
-            return (Keyboard.current != null && Keyboard.current.leftShiftKey.wasPressedThisFrame)
-                || (Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame);
         }
 
         private void TraceJump(Vector2 direction)

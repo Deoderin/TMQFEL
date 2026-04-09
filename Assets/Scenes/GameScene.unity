@@ -506,6 +506,10 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 252706893131195498, guid: 9b1828da222a88147ac1113085e94f3f, type: 3}
+      propertyPath: dashDuration
+      value: 0.05
+      objectReference: {fileID: 0}
+    - target: {fileID: 252706893131195498, guid: 9b1828da222a88147ac1113085e94f3f, type: 3}
       propertyPath: wallSlideSpeed
       value: 0.3
       objectReference: {fileID: 0}
