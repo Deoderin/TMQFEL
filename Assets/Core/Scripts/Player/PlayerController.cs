@@ -13,6 +13,7 @@ namespace TMQFEL.Player
         [SerializeField] private Vector2 moveDirection = Vector2.right;
 
         private bool _actionQueued;
+        private bool _pressedButton;
 
         private void Start()
         {
@@ -23,8 +24,14 @@ namespace TMQFEL.Player
         {
             if (WasActionPressedThisFrame())
             {
-                QueueAction();
+                _pressedButton = true;
             }
+            else if (WasActionFinishPressedThisFrame())
+            {
+                _pressedButton = false;
+            }
+
+            _actionQueued = _pressedButton;
         }
 
         private void FixedUpdate()
@@ -42,11 +49,6 @@ namespace TMQFEL.Player
 
             ApplyMovement(moveDirectionX, isGrounded, hasObstacleAhead);
             _actionQueued = false;
-        }
-
-        private void QueueAction()
-        {
-            _actionQueued = true;
         }
 
         private bool TryHandleAction(bool isGrounded, bool isWallSliding, float moveDirectionX)
@@ -101,11 +103,18 @@ namespace TMQFEL.Player
             return Mathf.Abs(direction.x) > 0f ? direction.x : 1f;
         }
 
-        private static bool WasActionPressedThisFrame()
+        private bool WasActionPressedThisFrame()
         {
             return (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
                 || (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
                 || (Touchscreen.current != null && Touchscreen.current.primaryTouch.press.wasPressedThisFrame);
+        }
+        
+        private bool WasActionFinishPressedThisFrame()
+        {
+            return (Keyboard.current != null && Keyboard.current.spaceKey.wasReleasedThisFrame)
+                   || (Mouse.current != null && Mouse.current.leftButton.wasReleasedThisFrame)
+                   || (Touchscreen.current != null && Touchscreen.current.primaryTouch.press.wasReleasedThisFrame);
         }
     }
 }
