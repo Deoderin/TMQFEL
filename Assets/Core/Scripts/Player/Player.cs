@@ -30,7 +30,6 @@ namespace TMQFEL.Player
 
         private void Awake()
         {
-            InitializeSystems();
             ConfigurePhysics();
         }
 
@@ -41,6 +40,7 @@ namespace TMQFEL.Player
 
         public void Spawn()
         {
+            InitializeSystems();
             transform.position = _levelSystem.GetSpawnWorldPosition();
             ResetMotion();
             ApplyView();

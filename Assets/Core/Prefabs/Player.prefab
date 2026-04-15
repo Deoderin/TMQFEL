@@ -101,7 +101,6 @@ GameObject:
   m_Component:
   - component: {fileID: 4778425595462920342}
   - component: {fileID: 6136453468222061933}
-  - component: {fileID: 252706893131195498}
   - component: {fileID: 624803476062590622}
   - component: {fileID: 8138971847248107077}
   m_Layer: 0
@@ -142,27 +141,8 @@ MonoBehaviour:
   visualRoot: {fileID: 4447245609979847004}
   spriteRenderer: {fileID: 4870187954305841421}
   sizeMultiplier: 0.5
-  debugLogs: 0
-  rigidbody: {fileID: 624803476062590622}
+  playerRigidbody: {fileID: 624803476062590622}
   boxCollider: {fileID: 8138971847248107077}
---- !u!114 &252706893131195498
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7194397567800561890}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b7b8b0ef1a824be989a8d74bbdcb7e6f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  player: {fileID: 6136453468222061933}
-  moveSpeed: 3
-  jumpSpeed: 7
-  obstacleProbeDistance: 0.01
-  wallSlideSpeed: 3
-  moveDirection: {x: 1, y: 0}
 --- !u!50 &624803476062590622
 Rigidbody2D:
   serializedVersion: 5
