@@ -13,7 +13,6 @@ namespace TMQFEL.Player
         [SerializeField] private Vector2 moveDirection = Vector2.right;
 
         private bool _actionQueued;
-        private bool _pressedButton;
 
         private void Start()
         {
@@ -24,14 +23,8 @@ namespace TMQFEL.Player
         {
             if (WasActionPressedThisFrame())
             {
-                _pressedButton = true;
+                _actionQueued = true;
             }
-            else if (WasActionFinishPressedThisFrame())
-            {
-                _pressedButton = false;
-            }
-
-            _actionQueued = _pressedButton;
         }
 
         private void FixedUpdate()
@@ -108,13 +101,6 @@ namespace TMQFEL.Player
             return (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
                 || (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
                 || (Touchscreen.current != null && Touchscreen.current.primaryTouch.press.wasPressedThisFrame);
-        }
-        
-        private bool WasActionFinishPressedThisFrame()
-        {
-            return (Keyboard.current != null && Keyboard.current.spaceKey.wasReleasedThisFrame)
-                   || (Mouse.current != null && Mouse.current.leftButton.wasReleasedThisFrame)
-                   || (Touchscreen.current != null && Touchscreen.current.primaryTouch.press.wasReleasedThisFrame);
         }
     }
 }
