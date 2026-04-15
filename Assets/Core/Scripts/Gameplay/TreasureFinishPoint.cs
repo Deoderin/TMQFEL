@@ -1,4 +1,5 @@
 using System;
+using TMQFEL.Core;
 using UnityEngine;
 using UnityEngine.Events;
 using PlayerComponent = TMQFEL.Player.Player;
@@ -10,16 +11,17 @@ namespace TMQFEL.Gameplay
     public sealed class TreasureFinishPoint : MonoBehaviour
     {
         [SerializeField] private BoxCollider2D boxCollider;
-        [SerializeField] private UnityEvent onFinishReached;
-
+        
+        private readonly UnityEvent _onFinishReached =  new UnityEvent();
+        private GameCycle _gameCycle;
         private bool _isReached;
-
-        public event Action<PlayerComponent> FinishReached;
         
 
-        private void Awake()
+        private void Start()
         {
-
+            _gameCycle = SystemsService.Instance.Get<GameCycle>();
+            
+            _onFinishReached.AddListener(() => _gameCycle.SetClickScreen(true));
             boxCollider.isTrigger = true;
         }
 
@@ -42,8 +44,7 @@ namespace TMQFEL.Gameplay
             }
 
             _isReached = true;
-            FinishReached?.Invoke(player);
-            onFinishReached?.Invoke();
+            _onFinishReached?.Invoke();
         }
     }
 }

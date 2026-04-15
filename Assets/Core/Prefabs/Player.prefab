@@ -140,7 +140,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   visualRoot: {fileID: 4447245609979847004}
   spriteRenderer: {fileID: 4870187954305841421}
-  sizeMultiplier: 0.5
+  sizeMultiplier: 0.3
   playerRigidbody: {fileID: 624803476062590622}
   boxCollider: {fileID: 8138971847248107077}
 --- !u!50 &624803476062590622

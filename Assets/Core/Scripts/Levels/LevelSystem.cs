@@ -22,27 +22,41 @@ namespace TMQFEL.Levels
 
         public Vector3 GetSpawnWorldPosition()
         {
+            return TryGetCellWorldPosition(LevelCellType.Spawn, out var worldPosition)
+                ? worldPosition
+                : GetWorldPosition();
+        }
+
+        public bool TryGetTreasureWorldPosition(out Vector3 worldPosition)
+        {
+            return TryGetCellWorldPosition(LevelCellType.Treasure, out worldPosition);
+        }
+
+        public Vector3 GetWorldPosition()
+        {
+            return _levelCreator.transform.position;
+        }
+
+        private bool TryGetCellWorldPosition(LevelCellType cellType, out Vector3 worldPosition)
+        {
             var levelMapConfig = LevelMapConfig;
 
             for (var y = 0; y < levelMapConfig.Height; y++)
             {
                 for (var x = 0; x < levelMapConfig.Width; x++)
                 {
-                    if (levelMapConfig.GetCell(x, y) != LevelCellType.Spawn)
+                    if (levelMapConfig.GetCell(x, y) != cellType)
                     {
                         continue;
                     }
 
-                    return GetCellWorldPosition(x, y);
+                    worldPosition = GetCellWorldPosition(x, y);
+                    return true;
                 }
             }
 
-            return GetWorldPosition();
-        }
-
-        public Vector3 GetWorldPosition()
-        {
-            return _levelCreator.transform.position;
+            worldPosition = default;
+            return false;
         }
     }
 }

@@ -1,3 +1,4 @@
+using TMQFEL.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -5,7 +6,6 @@ namespace TMQFEL.Player
 {
     public sealed class PlayerController : MonoBehaviour
     {
-        [SerializeField] private Player player;
         [SerializeField] private float moveSpeed = 3f;
         [SerializeField] private float jumpSpeed = 7f;
         [SerializeField] private float obstacleProbeDistance = 0.08f;
@@ -13,10 +13,36 @@ namespace TMQFEL.Player
         [SerializeField] private Vector2 moveDirection = Vector2.right;
 
         private bool _actionQueued;
+        private LevelComponentsFactory _levelComponentsFactory;
+        private Vector2 _runtimeMoveDirection;
+
+        public Player CurrentPlayer => _levelComponentsFactory != null ? _levelComponentsFactory.PlayerInstance : null;
+
+        private void Awake()
+        {
+            SystemsService.Instance.Register(this);
+            ResetRunState();
+        }
 
         private void Start()
         {
-            player.Spawn();
+            _levelComponentsFactory = SystemsService.Instance.Get<LevelComponentsFactory>();
+        }
+
+        public void ResetRunState()
+        {
+            _actionQueued = false;
+            _runtimeMoveDirection = NormalizeDirection(moveDirection);
+        }
+
+        public void DestroyPlayer()
+        {
+            _actionQueued = false;
+
+            if (_levelComponentsFactory != null)
+            {
+                _levelComponentsFactory.DestroyPlayer();
+            }
         }
 
         private void Update()
@@ -29,22 +55,28 @@ namespace TMQFEL.Player
 
         private void FixedUpdate()
         {
+            var currentPlayer = CurrentPlayer;
+            if (currentPlayer == null)
+            {
+                return;
+            }
+
             var moveDirectionX = GetHorizontalDirection();
-            var isGrounded = player.IsGrounded();
-            var hasObstacleAhead = player.HasObstacleInDirection(new Vector2(moveDirectionX, 0f), obstacleProbeDistance);
+            var isGrounded = currentPlayer.IsGrounded();
+            var hasObstacleAhead = currentPlayer.HasObstacleInDirection(new Vector2(moveDirectionX, 0f), obstacleProbeDistance);
             var isWallSliding = hasObstacleAhead && !isGrounded;
 
-            if (TryHandleAction(isGrounded, isWallSliding, moveDirectionX))
+            if (TryHandleAction(currentPlayer, isGrounded, isWallSliding, moveDirectionX))
             {
                 _actionQueued = false;
                 return;
             }
 
-            ApplyMovement(moveDirectionX, isGrounded, hasObstacleAhead);
+            ApplyMovement(currentPlayer, moveDirectionX, isGrounded, hasObstacleAhead);
             _actionQueued = false;
         }
 
-        private bool TryHandleAction(bool isGrounded, bool isWallSliding, float moveDirectionX)
+        private bool TryHandleAction(Player currentPlayer, bool isGrounded, bool isWallSliding, float moveDirectionX)
         {
             if (!_actionQueued)
             {
@@ -53,7 +85,7 @@ namespace TMQFEL.Player
 
             if (isGrounded)
             {
-                player.Jump(jumpSpeed);
+                currentPlayer.Jump(jumpSpeed);
                 return false;
             }
 
@@ -62,38 +94,43 @@ namespace TMQFEL.Player
                 return false;
             }
 
-            PerformWallJump(moveDirectionX);
+            PerformWallJump(currentPlayer, moveDirectionX);
             return true;
         }
 
-        private void PerformWallJump(float moveDirectionX)
+        private void PerformWallJump(Player currentPlayer, float moveDirectionX)
         {
             var nextDirectionX = -moveDirectionX;
-            moveDirection = new Vector2(nextDirectionX, 0f);
-            player.WallJump(nextDirectionX * moveSpeed, jumpSpeed);
+            _runtimeMoveDirection = new Vector2(nextDirectionX, 0f);
+            currentPlayer.WallJump(nextDirectionX * moveSpeed, jumpSpeed);
         }
 
-        private void ApplyMovement(float moveDirectionX, bool isGrounded, bool hasObstacleAhead)
+        private void ApplyMovement(Player currentPlayer, float moveDirectionX, bool isGrounded, bool hasObstacleAhead)
         {
             if (!hasObstacleAhead)
             {
-                player.SetHorizontalSpeed(moveDirectionX * moveSpeed);
+                currentPlayer.SetHorizontalSpeed(moveDirectionX * moveSpeed);
                 return;
             }
 
             if (isGrounded)
             {
-                player.SetHorizontalSpeed(0f);
+                currentPlayer.SetHorizontalSpeed(0f);
                 return;
             }
 
-            player.ApplyWallSlide(wallSlideSpeed);
+            currentPlayer.ApplyWallSlide(wallSlideSpeed);
         }
 
         private float GetHorizontalDirection()
         {
-            var direction = moveDirection.normalized;
+            var direction = _runtimeMoveDirection.normalized;
             return Mathf.Abs(direction.x) > 0f ? direction.x : 1f;
+        }
+
+        private static Vector2 NormalizeDirection(Vector2 direction)
+        {
+            return direction == Vector2.zero ? Vector2.right : direction.normalized;
         }
 
         private bool WasActionPressedThisFrame()
